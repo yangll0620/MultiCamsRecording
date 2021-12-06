@@ -1,11 +1,41 @@
 // MultiCamsRecording.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
-
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 #include <iostream>
+
+using namespace cv;
+using namespace std;
 
 int main()
 {
-    std::cout << "Hello World!\n";
+	VideoCapture cam0(0);
+	Mat frame_cam0;
+
+	const char* WIN0 = "cam 0";
+
+	if (!cam0.isOpened())
+	{
+		cout << "Could not open camera!" << endl;
+		return -1;
+	}
+
+	// Windows
+	namedWindow(WIN0, WINDOW_AUTOSIZE);
+	moveWindow(WIN0, 400, 0);
+
+	for (;;)
+	{
+		cam0 >> frame_cam0;
+
+		imshow(WIN0, frame_cam0);
+
+		char c = (char)waitKey(10);
+		if (c == 27)
+			break;
+	}
+	return 0;
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

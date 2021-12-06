@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29215.179
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31919.166
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MultiCamsRecording", "MultiCamsRecording\MultiCamsRecording.vcxproj", "{A8DFB843-F591-41C4-815C-890778E456E6}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MultiCamsRecording", "MultiCamsRecording\MultiCamsRecording.vcxproj", "{601B3E00-A64B-4605-8D51-C3AF2F2B460F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,19 +13,19 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{A8DFB843-F591-41C4-815C-890778E456E6}.Debug|x64.ActiveCfg = Debug|x64
-		{A8DFB843-F591-41C4-815C-890778E456E6}.Debug|x64.Build.0 = Debug|x64
-		{A8DFB843-F591-41C4-815C-890778E456E6}.Debug|x86.ActiveCfg = Debug|Win32
-		{A8DFB843-F591-41C4-815C-890778E456E6}.Debug|x86.Build.0 = Debug|Win32
-		{A8DFB843-F591-41C4-815C-890778E456E6}.Release|x64.ActiveCfg = Release|x64
-		{A8DFB843-F591-41C4-815C-890778E456E6}.Release|x64.Build.0 = Release|x64
-		{A8DFB843-F591-41C4-815C-890778E456E6}.Release|x86.ActiveCfg = Release|Win32
-		{A8DFB843-F591-41C4-815C-890778E456E6}.Release|x86.Build.0 = Release|Win32
+		{601B3E00-A64B-4605-8D51-C3AF2F2B460F}.Debug|x64.ActiveCfg = Debug|x64
+		{601B3E00-A64B-4605-8D51-C3AF2F2B460F}.Debug|x64.Build.0 = Debug|x64
+		{601B3E00-A64B-4605-8D51-C3AF2F2B460F}.Debug|x86.ActiveCfg = Debug|Win32
+		{601B3E00-A64B-4605-8D51-C3AF2F2B460F}.Debug|x86.Build.0 = Debug|Win32
+		{601B3E00-A64B-4605-8D51-C3AF2F2B460F}.Release|x64.ActiveCfg = Release|x64
+		{601B3E00-A64B-4605-8D51-C3AF2F2B460F}.Release|x64.Build.0 = Release|x64
+		{601B3E00-A64B-4605-8D51-C3AF2F2B460F}.Release|x86.ActiveCfg = Release|Win32
+		{601B3E00-A64B-4605-8D51-C3AF2F2B460F}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {8F80C526-1486-4628-9CA4-9A78A54B8F3C}
+		SolutionGuid = {0E3BF44F-D252-40CD-A4CE-CF4B9AEC8A83}
 	EndGlobalSection
 EndGlobal
