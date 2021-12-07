@@ -4,37 +4,74 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <iostream>
+#include <thread> 
+#include <chrono>
+#include <cstdlib>
+
 
 using namespace cv;
 using namespace std;
+using namespace std::chrono;
 
-int main()
+#include "multiWebCams.h"
+
+int showSaveCamStream(int index)
 {
-	VideoCapture cam0(0);
-	Mat frame_cam0;
-
-	const char* WIN0 = "cam 0";
-
-	if (!cam0.isOpened())
+	VideoCapture cap(index, cv::CAP_DSHOW);
+	if (!cap.isOpened())
 	{
-		cout << "Could not open camera!" << endl;
+		cout << "Could not open camera " << index << endl;
 		return -1;
 	}
 
-	// Windows
-	namedWindow(WIN0, WINDOW_AUTOSIZE);
-	moveWindow(WIN0, 400, 0);
+	Mat frame;
+	int fourcc = VideoWriter::fourcc('M', 'J', 'P', 'G');
 
+	cap.set(CAP_PROP_FOURCC, fourcc);
+	cap.set(CAP_PROP_FRAME_WIDTH, 1280);
+	cap.set(CAP_PROP_FRAME_HEIGHT, 720);
+
+
+	const string showWinName = "cam " + to_string(index) + ", press ESC to exit";
+	namedWindow(showWinName, WINDOW_AUTOSIZE);
+	moveWindow(showWinName, 400, 0);
+
+	
+	string outVname = "live.avi";
+	
+	int frame_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+	int frame_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+	VideoWriter outVideo(outVname, fourcc, 60, Size(frame_width, frame_height));
 	for (;;)
 	{
-		cam0 >> frame_cam0;
+		cap >> frame;
 
-		imshow(WIN0, frame_cam0);
+		imshow(showWinName, frame);
+		outVideo.write(frame);
 
 		char c = (char)waitKey(10);
 		if (c == 27)
 			break;
 	}
+	cap.release();
+	cout << "camera " << index  << " released!" << endl;
+}
+
+int main(int argc, char *argv[])
+{
+	// speed up opencv open camera
+	//int env = _putenv("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS=0");
+	
+	multiWebCams mwebcams;
+	int nCams = mwebcams.numOfAvailableCameras();
+
+	cout << "There are " << nCams << " cameras" << endl;
+
+
+	thread t_showSave(showSaveCamStream, 1);
+	t_showSave.join(); // Wait for t_showSave to finish
+	
+	cout << "main exit" << endl;
 	return 0;
 }
 
