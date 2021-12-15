@@ -8,9 +8,3 @@ Developed using c++ and OpenCV
 
 
 # Usage
-
-
-## Todo List
-write a .yaml file for conda install
-dependent 
-:conda install -n conda-forge opencv
