@@ -7,6 +7,7 @@
 #include <thread> 
 #include <chrono>
 #include <cstdlib>
+#include <time.h>
 
 
 using namespace cv;
@@ -17,6 +18,7 @@ using namespace std::chrono;
 
 int showSaveCamStream(int index)
 {
+	cout << "Initing Camera " << index << "...." << endl;
 	VideoCapture cap(index, cv::CAP_DSHOW);
 	if (!cap.isOpened())
 	{
@@ -28,8 +30,19 @@ int showSaveCamStream(int index)
 	int fourcc = VideoWriter::fourcc('M', 'J', 'P', 'G');
 
 	cap.set(CAP_PROP_FOURCC, fourcc);
-	cap.set(CAP_PROP_FRAME_WIDTH, 1280);
-	cap.set(CAP_PROP_FRAME_HEIGHT, 720);
+
+	// prefix of file name for both.aviand .csv files
+	__time64_t long_time;
+	struct tm curr_tm;
+	char timebuff[50];
+
+	_time64(&long_time);
+	_localtime64_s(&curr_tm, &long_time);
+
+	strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
+
+
+	string filename_prefix = "video_" + string(timebuff) + "_camera" + to_string(index);
 
 
 	const string showWinName = "cam " + to_string(index) + ", press ESC to exit";
@@ -37,7 +50,7 @@ int showSaveCamStream(int index)
 	moveWindow(showWinName, 400, 0);
 
 	
-	string outVname = "live.avi";
+	string outVname = filename_prefix + ".avi";
 	
 	int frame_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
 	int frame_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
@@ -68,7 +81,7 @@ int main(int argc, char *argv[])
 	cout << "There are " << nCams << " cameras" << endl;
 
 
-	thread t_showSave(showSaveCamStream, 1);
+	thread t_showSave(showSaveCamStream, 0);
 	t_showSave.join(); // Wait for t_showSave to finish
 	
 	cout << "main exit" << endl;
