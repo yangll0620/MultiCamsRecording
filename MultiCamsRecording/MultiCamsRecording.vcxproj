@@ -145,10 +145,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="MultiCamsRecording.cpp" />
-    <ClCompile Include="multiWebCams.cpp" />
+    <ClCompile Include="webCam.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="multiWebCams.h" />
+    <ClInclude Include="webCam.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

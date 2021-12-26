@@ -18,12 +18,12 @@
     <ClCompile Include="MultiCamsRecording.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="multiWebCams.cpp">
+    <ClCompile Include="webCam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="multiWebCams.h">
+    <ClInclude Include="webCam.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

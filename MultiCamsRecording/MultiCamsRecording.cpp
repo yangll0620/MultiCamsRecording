@@ -8,93 +8,65 @@
 #include <chrono>
 #include <cstdlib>
 #include <time.h>
+#include<list>
 
 
 using namespace cv;
 using namespace std;
 using namespace std::chrono;
 
-#include "multiWebCams.h"
+#include "webCam.h"
 
-int showSaveCamStream(int index)
+int main(int argc, char* argv[])
 {
-	cout << "Initing Camera " << index << "...." << endl;
-	VideoCapture cap(index, cv::CAP_DSHOW);
-	if (!cap.isOpened())
-	{
-		cout << "Could not open camera " << index << endl;
-		return -1;
-	}
-
-	Mat frame;
-	int fourcc = VideoWriter::fourcc('M', 'J', 'P', 'G');
-
-	cap.set(CAP_PROP_FOURCC, fourcc);
-
-	// prefix of file name for both.aviand .csv files
-	__time64_t long_time;
+	__time64_t t_begin0;
 	struct tm curr_tm;
 	char timebuff[50];
-
-	_time64(&long_time);
-	_localtime64_s(&curr_tm, &long_time);
-
+	_time64(&t_begin0);
+	_localtime64_s(&curr_tm, &t_begin0);
 	strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
 
 
-	string filename_prefix = "video_" + string(timebuff) + "_camera" + to_string(index);
-
-
-	const string showWinName = "cam " + to_string(index) + ", press ESC to exit";
-	namedWindow(showWinName, WINDOW_AUTOSIZE);
-	moveWindow(showWinName, 400, 0);
-
-	
-	string outVname = filename_prefix + ".avi";
-	
-	int frame_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
-	int frame_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-	VideoWriter outVideo(outVname, fourcc, 60, Size(frame_width, frame_height));
-	for (;;)
+	// openning cameras iteratively
+	int camId = 0;
+	std::list<webCam> wcams;
+	while (true)
 	{
-		cap >> frame;
+		webCam wcam(camId);
+		if (!wcam.openCam())
+		{
+			cout << "There are " << camId << " cameras opened!" << endl;
+			break;
+		}
+		wcams.push_back(wcam);
+		camId++;
+	}
 
-		imshow(showWinName, frame);
-		outVideo.write(frame);
 
+	// open each capture Frame thread
+	/*string filename_prefix = "video_" + string(timebuff) + "_camera";
+
+	std::list<webCam>::iterator it;
+	for (it = wcams.begin(); it != wcams.end(); it++)
+	{
+		string outFilename = filename_prefix + to_string(it->camID) + ".avi";
+		it->start(outFilename);
+	}
+
+
+	while (true)
+	{
 		char c = (char)waitKey(10);
 		if (c == 27)
+		{
 			break;
+		}
 	}
-	cap.release();
-	cout << "camera " << index  << " released!" << endl;
-}
 
-int main(int argc, char *argv[])
-{
-	// speed up opencv open camera
-	//int env = _putenv("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS=0");
-	
-	multiWebCams mwebcams;
-	int nCams = mwebcams.numOfAvailableCameras();
+	for (it = wcams.begin(); it != wcams.end(); it++)
+	{
+		it->stop();
+	}*/
 
-	cout << "There are " << nCams << " cameras" << endl;
-
-
-	thread t_showSave(showSaveCamStream, 0);
-	t_showSave.join(); // Wait for t_showSave to finish
-	
-	cout << "main exit" << endl;
 	return 0;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
