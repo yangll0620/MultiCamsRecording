@@ -145,9 +145,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="MultiCamsRecording.cpp" />
+    <ClCompile Include="SerialPortIO8.cpp" />
     <ClCompile Include="webCam.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="SerialPortIO8.h" />
     <ClInclude Include="webCam.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

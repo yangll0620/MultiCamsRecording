@@ -21,9 +21,15 @@
     <ClCompile Include="webCam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SerialPortIO8.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="webCam.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SerialPortIO8.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
