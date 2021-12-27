@@ -17,7 +17,7 @@ using namespace std::chrono;
 
 #include "webCam.h"
 
-int main(int argc, char* argv[])
+/*int main(int argc, char* argv[])
 {
 	__time64_t t_begin0;
 	struct tm curr_tm;
@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 	webCam wcam(camId);
 	wcam.openCam();
 	string filename_prefix = "video_" + string(timebuff) + "_camera";
-	string outFilename = filename_prefix + to_string(wcam.camID) + ".avi";
+	string outFilename = filename_prefix + to_string(wcam.camID);
 	wcam.capturing = true;
 	wcam.captureFrame(outFilename + ".avi", outFilename + ".csv");
 	/*std::list<webCam> wcams;
@@ -60,5 +60,77 @@ int main(int argc, char* argv[])
 	}*/
 
 
+//	return 0;
+//}
+
+
+int showSaveCamStream(int index)
+{
+	cout << "Initing Camera " << index << "...." << endl;
+	VideoCapture cap(index, cv::CAP_DSHOW);
+	if (!cap.isOpened())
+	{
+		cout << "Could not open camera " << index << endl;
+		return -1;
+	}
+
+	Mat frame;
+	int fourcc = VideoWriter::fourcc('M', 'J', 'P', 'G');
+
+	cap.set(CAP_PROP_FOURCC, fourcc);
+
+	// prefix of file name for both.aviand .csv files
+	__time64_t long_time;
+	struct tm curr_tm;
+	char timebuff[50];
+
+	_time64(&long_time);
+	_localtime64_s(&curr_tm, &long_time);
+
+	strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
+
+
+	string filename_prefix = "video_" + string(timebuff) + "_camera" + to_string(index);
+
+
+	const string showWinName = "cam " + to_string(index) + ", press ESC to exit";
+	namedWindow(showWinName, WINDOW_AUTOSIZE);
+	moveWindow(showWinName, 400, 0);
+
+
+	string outVname = filename_prefix + ".avi";
+
+	int frame_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+	int frame_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+	VideoWriter outVideo(outVname, fourcc, 60, Size(frame_width, frame_height));
+	for (;;)
+	{
+		cap >> frame;
+
+		imshow(showWinName, frame);
+		outVideo.write(frame);
+
+		char c = (char)waitKey(10);
+		if (c == 27)
+			break;
+	}
+	cap.release();
+	cout << "camera " << index << " released!" << endl;
+}
+
+int main(int argc, char* argv[])
+{
+	// speed up opencv open camera
+	//int env = _putenv("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS=0");
+
+
+
+	thread t_showSave1(showSaveCamStream, 0);
+	thread t_showSave2(showSaveCamStream, 1);
+
+	t_showSave1.join(); // Wait for t_showSave to finish
+	t_showSave2.join(); // Wait for t_showSave to finish
+
+	cout << "main exit" << endl;
 	return 0;
 }

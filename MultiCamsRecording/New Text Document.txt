@@ -1,0 +1,32 @@
+// prefix of file name for both.aviand .csv files
+	__time64_t t_begin0;
+	struct tm curr_tm;
+	char timebuff[50];
+	_time64(&t_begin0);
+	_localtime64_s(&curr_tm, &t_begin0);
+	strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
+
+	int camID;
+	string f_prefix = "video_" + string(timebuff) + "_camera";
+
+	camID = 0;
+	VideoCapture cap0;
+	if (openCam(camID, cap0))
+	{
+		string outVFile = f_prefix + to_string(camID);
+		thread t_showSave0(showSaveCamStream, cap0, camID, outVFile);
+		t_showSave0.join();
+	}
+
+	camID = 1;
+	VideoCapture cap1;
+	if (openCam(camID, cap0))
+	{
+		string outVFile = f_prefix + to_string(camID);
+		thread t_showSave1(showSaveCamStream, cap1, camID, outVFile);
+		t_showSave1.join();
+	}
+	
+
+	cout << "main exit" << endl;
+	return 0;
