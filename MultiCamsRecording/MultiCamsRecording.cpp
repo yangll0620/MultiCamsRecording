@@ -64,13 +64,37 @@ using namespace std::chrono;
 //}
 
 
-int showSaveCamStream(int index)
+double get_web_frame(VideoCapture cap, int camID)
 {
-	cout << "Initing Camera " << index << "...." << endl;
-	VideoCapture cap(index, cv::CAP_DSHOW);
+	double fps;
+	int framei = 0;
+	int testframen = 150;
+	Mat frame;
+
+	cout << "Testing fps of Camera " << camID << " ......" << endl;
+	auto begin = std::chrono::high_resolution_clock::now();
+	while (framei < testframen)
+	{
+		if (cap.read(frame))
+		{
+			framei++;
+		}
+	}
+	auto end = std::chrono::high_resolution_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+	fps = (int)((double)testframen / elapsed.count() * 1000 * 100) / 100.0;
+	cout << "Camera " << camID << " fps = " << fps << endl;
+
+	return fps;
+}
+
+int showSaveCamStream(int camID, string outVFile)
+{
+	cout << "Initing Camera " << camID << "...." << endl;
+	VideoCapture cap(camID, cv::CAP_DSHOW);
 	if (!cap.isOpened())
 	{
-		cout << "Could not open camera " << index << endl;
+		cout << "Could not open camera " << camID << endl;
 		return -1;
 	}
 
@@ -79,30 +103,14 @@ int showSaveCamStream(int index)
 
 	cap.set(CAP_PROP_FOURCC, fourcc);
 
-	// prefix of file name for both.aviand .csv files
-	__time64_t long_time;
-	struct tm curr_tm;
-	char timebuff[50];
-
-	_time64(&long_time);
-	_localtime64_s(&curr_tm, &long_time);
-
-	strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
-
-
-	string filename_prefix = "video_" + string(timebuff) + "_camera" + to_string(index);
-
-
-	const string showWinName = "cam " + to_string(index) + ", press ESC to exit";
-	namedWindow(showWinName, WINDOW_AUTOSIZE);
-	moveWindow(showWinName, 400, 0);
-
-
-	string outVname = filename_prefix + ".avi";
 
 	int frame_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
 	int frame_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-	VideoWriter outVideo(outVname, fourcc, 60, Size(frame_width, frame_height));
+	double fps = get_web_frame(cap, camID);
+	VideoWriter outVideo(outVFile, fourcc, fps, Size(frame_width, frame_height));
+
+	const string showWinName = "cam " + to_string(camID) + ", press ESC to exit";
+	namedWindow(showWinName, WINDOW_AUTOSIZE);
 	for (;;)
 	{
 		cap >> frame;
@@ -115,21 +123,26 @@ int showSaveCamStream(int index)
 			break;
 	}
 	cap.release();
-	cout << "camera " << index << " released!" << endl;
+	cout << "camera " << camID << " released!" << endl;
 }
 
 int main(int argc, char* argv[])
 {
-	// speed up opencv open camera
-	//int env = _putenv("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS=0");
+	// prefix of file name for both.avi and .csv files
+	__time64_t t_begin0;
+	struct tm curr_tm;
+	char timebuff[50];
+	_time64(&t_begin0);
+	_localtime64_s(&curr_tm, &t_begin0);
+	strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
+	string filename_prefix = "video_" + string(timebuff) + "_camera";
 
 
+	thread t_showSave1(showSaveCamStream, 0, filename_prefix + to_string(0) + ".avi");
+	thread t_showSave2(showSaveCamStream, 1, filename_prefix + to_string(1) + ".avi");
 
-	thread t_showSave1(showSaveCamStream, 0);
-	thread t_showSave2(showSaveCamStream, 1);
-
-	t_showSave1.join(); // Wait for t_showSave to finish
-	t_showSave2.join(); // Wait for t_showSave to finish
+	t_showSave1.join(); 
+	t_showSave2.join();
 
 	cout << "main exit" << endl;
 	return 0;
