@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <time.h>
 #include<list>
+#include <fstream>
 
 
 using namespace cv;
@@ -64,6 +65,8 @@ using namespace std::chrono;
 //}
 
 
+auto t_start = chrono::steady_clock::now();
+
 double get_web_frame(VideoCapture cap, int camID)
 {
 	double fps;
@@ -88,7 +91,7 @@ double get_web_frame(VideoCapture cap, int camID)
 	return fps;
 }
 
-int showSaveCamStream(int camID, string outVFile)
+int showSaveCamStream(int camID, string outFilename)
 {
 	cout << "Initing Camera " << camID << "...." << endl;
 	VideoCapture cap(camID, cv::CAP_DSHOW);
@@ -107,16 +110,26 @@ int showSaveCamStream(int camID, string outVFile)
 	int frame_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
 	int frame_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
 	double fps = get_web_frame(cap, camID);
+	string outVFile = outFilename + ".avi";
 	VideoWriter outVideo(outVFile, fourcc, fps, Size(frame_width, frame_height));
+
+	string outTimestampFile = outFilename + ".csv";
+	std::ofstream timeStampFile(outTimestampFile);
+	timeStampFile << "framei" << "," << "time(ms)" << "\n";
 
 	const string showWinName = "cam " + to_string(camID) + ", press ESC to exit";
 	namedWindow(showWinName, WINDOW_AUTOSIZE);
+
+	int framei = 0;
 	for (;;)
 	{
 		cap >> frame;
+		long t_elapsed  = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count();
+		framei++;
 
 		imshow(showWinName, frame);
 		outVideo.write(frame);
+		timeStampFile << framei << "," << t_elapsed << "\n";
 
 		char c = (char)waitKey(10);
 		if (c == 27)
@@ -124,6 +137,8 @@ int showSaveCamStream(int camID, string outVFile)
 	}
 	cap.release();
 	cout << "camera " << camID << " released!" << endl;
+	timeStampFile.close();
+
 }
 
 int main(int argc, char* argv[])
@@ -137,9 +152,10 @@ int main(int argc, char* argv[])
 	strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
 	string filename_prefix = "video_" + string(timebuff) + "_camera";
 
+	
 
-	thread t_showSave1(showSaveCamStream, 0, filename_prefix + to_string(0) + ".avi");
-	thread t_showSave2(showSaveCamStream, 1, filename_prefix + to_string(1) + ".avi");
+	thread t_showSave1(showSaveCamStream, 0, filename_prefix + to_string(0));
+	thread t_showSave2(showSaveCamStream, 1, filename_prefix + to_string(1));
 
 	t_showSave1.join(); 
 	t_showSave2.join();
