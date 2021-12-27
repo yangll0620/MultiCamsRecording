@@ -29,7 +29,13 @@ int main(int argc, char* argv[])
 
 	// openning cameras iteratively
 	int camId = 0;
-	std::list<webCam> wcams;
+	webCam wcam(camId);
+	wcam.openCam();
+	string filename_prefix = "video_" + string(timebuff) + "_camera";
+	string outFilename = filename_prefix + to_string(wcam.camID) + ".avi";
+	wcam.capturing = true;
+	wcam.captureFrame(outFilename + ".avi", outFilename + ".csv");
+	/*std::list<webCam> wcams;
 	while (true)
 	{
 		webCam wcam(camId);
@@ -41,32 +47,18 @@ int main(int argc, char* argv[])
 		wcams.push_back(wcam);
 		camId++;
 	}
-
+	
 
 	// open each capture Frame thread
-	/*string filename_prefix = "video_" + string(timebuff) + "_camera";
+	string filename_prefix = "video_" + string(timebuff) + "_camera";
 
 	std::list<webCam>::iterator it;
 	for (it = wcams.begin(); it != wcams.end(); it++)
 	{
 		string outFilename = filename_prefix + to_string(it->camID) + ".avi";
-		it->start(outFilename);
-	}
-
-
-	while (true)
-	{
-		char c = (char)waitKey(10);
-		if (c == 27)
-		{
-			break;
-		}
-	}
-
-	for (it = wcams.begin(); it != wcams.end(); it++)
-	{
-		it->stop();
+		it->captureFrame(outFilename + ".avi", outFilename + ".csv");
 	}*/
+
 
 	return 0;
 }

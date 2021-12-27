@@ -96,6 +96,13 @@ int webCam::captureFrame(string outVFile, string outTimestampFile)
 		imshow(showWinName, frame);
 		outVideo.write(frame);
 
+		char c = (char)waitKey(10);
+		if (c == 27)
+		{
+			capturing = false;
+			break;
+		}
+
 		framei++;	
 	}
 	outVideo.release();
