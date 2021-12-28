@@ -7,5 +7,7 @@ class SerialPortIO8
 public:
 
 	static string Locate_serialPortIO8();
+
+
 };
 
