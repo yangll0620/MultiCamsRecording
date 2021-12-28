@@ -11,7 +11,7 @@
 #include<list>
 #include <fstream>
 #include<windows.h>
-
+#include <stdio.h>
 
 using namespace cv;
 using namespace std;
@@ -95,9 +95,8 @@ int showSaveCamStream(int camID, string outFilename)
 
 }
 
-int main(int argc, char* argv[])
+bool handleIO8(LPCSTR COMFileName)
 {
-
 	HANDLE hComm;
 
 	hComm = CreateFileA("\\\\.\\COM6",                //port name
@@ -109,11 +108,54 @@ int main(int argc, char* argv[])
 		NULL);        // Null for Comm Devices
 
 	if (hComm == INVALID_HANDLE_VALUE)
-		printf("Error in opening serial port");
-	else
-		printf("opening serial port successful");
+	{
+		printf("Error openning serial port");
+
+		CloseHandle(hComm);
+		return false;
+	}
+
+	
+	printf("opened serial port!");
+
+	// setup serial params
+	DCB dcb;
+	SecureZeroMemory(&dcb, sizeof(DCB)); //  Initialize the DCB structure.
+
+	bool status = GetCommState(hComm, &dcb);
+
+	//  Fill in some DCB values and set the com state: 
+	dcb.BaudRate = CBR_115200;     //  baud rate
+	dcb.ByteSize = 8;             //  data size, xmit and rcv
+	dcb.Parity = NOPARITY;      //  parity bit
+	dcb.StopBits = ONESTOPBIT;    //  stop bit
+
+	char DataBuffer[] = "Z";
+	DWORD dwBytesToWrite = (DWORD)strlen(DataBuffer);
+	DWORD dwBytesWritten = 0;
+
+	bool writeStatus = WriteFile(hComm,        // Handle to the Serial port
+		DataBuffer,     // Data to be written to the port
+		dwBytesToWrite,  //No of bytes to write
+		&dwBytesWritten, //Bytes written
+		NULL);
+
+
+	char   ReadBuffer[5] = { 0 };
+	OVERLAPPED ol = { 0 };
+	bool readStatus = ReadFileEx(hComm, ReadBuffer, 4, &ol, NULL);
+	
+	
 
 	CloseHandle(hComm);//Closing the Serial Port
+
+	return true;
+}
+
+int main(int argc, char* argv[])
+{
+	LPCSTR IO8File = "\\\\.\\COM6";
+	bool status =  handleIO8(IO8File);
 
 	// prefix of file name for both.avi and .csv files
 	__time64_t t_begin0;
