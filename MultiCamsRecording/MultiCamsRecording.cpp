@@ -99,7 +99,7 @@ bool handleIO8(LPCSTR COMFileName)
 {
 	HANDLE hComm;
 
-	hComm = CreateFileA("\\\\.\\COM6",                //port name
+	hComm = CreateFileA(COMFileName,                //port name
 		GENERIC_READ | GENERIC_WRITE, //Read/Write
 		0,                            // No Sharing
 		NULL,                         // No Security
@@ -109,14 +109,14 @@ bool handleIO8(LPCSTR COMFileName)
 
 	if (hComm == INVALID_HANDLE_VALUE)
 	{
-		printf("Error openning serial port");
+		printf("Error openning serial port\n");
 
 		CloseHandle(hComm);
 		return false;
 	}
 
 	
-	printf("opened serial port!");
+	printf("opened serial port!\n");
 
 	// setup serial params
 	DCB dcb;
@@ -129,23 +129,69 @@ bool handleIO8(LPCSTR COMFileName)
 	dcb.ByteSize = 8;             //  data size, xmit and rcv
 	dcb.Parity = NOPARITY;      //  parity bit
 	dcb.StopBits = ONESTOPBIT;    //  stop bit
+	if (!SetCommState(hComm, &dcb)) {
+		std::cout << "!SetCommState" << "\n";
+		return false;
+	}
 
-	char DataBuffer[] = "Z";
+	char DataBuffer[] = "A";
 	DWORD dwBytesToWrite = (DWORD)strlen(DataBuffer);
 	DWORD dwBytesWritten = 0;
 
-	bool writeStatus = WriteFile(hComm,        // Handle to the Serial port
+	bool fSuccess;
+	
+	fSuccess = WriteFile(hComm,        // Handle to the Serial port
 		DataBuffer,     // Data to be written to the port
 		dwBytesToWrite,  //No of bytes to write
 		&dwBytesWritten, //Bytes written
 		NULL);
 
 
-	char   ReadBuffer[5] = { 0 };
-	OVERLAPPED ol = { 0 };
-	bool readStatus = ReadFileEx(hComm, ReadBuffer, 4, &ol, NULL);
+	fSuccess = SetCommMask(hComm, EV_CTS | EV_DSR | EV_RXCHAR);
+	if (!fSuccess)
+	{
+		// Handle the error. 
+		printf("SetCommMask failed with error %d.\n", GetLastError());
+		return false;
+	}
+
+	OVERLAPPED o;
+	DWORD dwEvtMask;
+	// Create an event object for use by WaitCommEvent. 
+	o.hEvent = CreateEvent(
+		NULL,   // default security attributes 
+		TRUE,   // manual-reset event 
+		FALSE,  // not signaled 
+		NULL    // no name
+	);
+	// Initialize the rest of the OVERLAPPED structure to zero.
+	o.Internal = 0;
+	o.InternalHigh = 0;
+	o.Offset = 0;
+	o.OffsetHigh = 0;
+	assert(o.hEvent);
 	
-	
+	int retVal;
+	if (WaitCommEvent(hComm, &dwEvtMask, &o))
+	{
+		if (dwEvtMask & EV_RXCHAR)
+		{
+			cout << "Character Received" << endl;
+
+			BYTE Byte;
+			DWORD dwBytesTransferred;
+			ReadFile(hComm, &Byte, 1, &dwBytesTransferred, 0);
+			retVal = Byte;
+
+			cout << "retVal = " << retVal << endl;
+		}
+
+		if (dwEvtMask & EV_CTS)
+		{
+			// To do. 
+		}
+	}
+
 
 	CloseHandle(hComm);//Closing the Serial Port
 
@@ -154,25 +200,28 @@ bool handleIO8(LPCSTR COMFileName)
 
 int main(int argc, char* argv[])
 {
-	LPCSTR IO8File = "\\\\.\\COM6";
+	LPCSTR IO8File = "\\\\.\\COM4";
 	bool status =  handleIO8(IO8File);
 
-	// prefix of file name for both.avi and .csv files
-	__time64_t t_begin0;
-	struct tm curr_tm;
-	char timebuff[50];
-	_time64(&t_begin0);
-	_localtime64_s(&curr_tm, &t_begin0);
-	strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
-	string filename_prefix = "video_" + string(timebuff) + "_camera";
+	bool testCams = false;
+	if (testCams)
+	{
+		// prefix of file name for both.avi and .csv files
+		__time64_t t_begin0;
+		struct tm curr_tm;
+		char timebuff[50];
+		_time64(&t_begin0);
+		_localtime64_s(&curr_tm, &t_begin0);
+		strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
+		string filename_prefix = "video_" + string(timebuff) + "_camera";
 
-	
 
-	thread t_showSave1(showSaveCamStream, 0, filename_prefix + to_string(0));
-	thread t_showSave2(showSaveCamStream, 1, filename_prefix + to_string(1));
+		thread t_showSave1(showSaveCamStream, 0, filename_prefix + to_string(0));
+		thread t_showSave2(showSaveCamStream, 1, filename_prefix + to_string(1));
 
-	t_showSave1.join(); 
-	t_showSave2.join();
+		t_showSave1.join();
+		t_showSave2.join();
+	}
 
 	cout << "main exit" << endl;
 	return 0;
