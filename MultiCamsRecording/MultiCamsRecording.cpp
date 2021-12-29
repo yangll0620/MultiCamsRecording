@@ -12,6 +12,7 @@
 #include <fstream>
 #include<windows.h>
 #include <stdio.h>
+#include <shobjidl.h> 
 
 using namespace cv;
 using namespace std;
@@ -77,7 +78,7 @@ int showSaveCamStream(int camID, string outFilename)
 	namedWindow(showWinName, WINDOW_AUTOSIZE);
 
 	int framei = 0;
-	for (;;)
+	while(capturing)
 	{
 		cap >> frame;
 		long t_elapsed  = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count();
@@ -90,8 +91,6 @@ int showSaveCamStream(int camID, string outFilename)
 		timeStampFile << framei << "," << t_elapsed << "\n";
 
 		char c = (char)waitKey(10);
-		if (c == 27)
-			break;
 	}
 	cap.release();
 	cout << "camera " << camID << " released!" << endl;
@@ -191,42 +190,110 @@ bool handleIO8(LPCSTR COMFileName, string outFilename)
 	return true;
 }
 
-int main(int argc, char* argv[])
+HRESULT chooseSavefolder()
 {
-	LPCSTR IO8File = "\\\\.\\COM6";
-	
+	string savefolder = "";
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	cout << "SUCCEEDED(S_OK) = " << SUCCEEDED(S_OK) << endl;
+	cout << "SUCCEEDED(S_FALSE)= " << SUCCEEDED(S_FALSE) << endl;
+	cout << "SUCCEEDED(E_FAIL) = " << SUCCEEDED(E_FAIL) << endl;
+	cout << "SUCCEEDED(RPC_E_CHANGED_MODE)  = " << SUCCEEDED(RPC_E_CHANGED_MODE) << endl;
 
-	bool testCams = true;
-
-	// prefix of file name for both.avi and .csv files
-	__time64_t t_begin0;
-	struct tm curr_tm;
-	char timebuff[50];
-	_time64(&t_begin0);
-	_localtime64_s(&curr_tm, &t_begin0);
-	strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
-	string filename_prefix = "v_" + string(timebuff) + "_camera";
-
-
-	thread t_showSave1(showSaveCamStream, 0, filename_prefix + to_string(0));
-	thread t_showSave2(showSaveCamStream, 1, filename_prefix + to_string(1));
-	thread t_monitorIO8(handleIO8, IO8File, "v_" + string(timebuff) + "_startpad_timestamp");
-
-	int camID = 0;
-	const string showWinName = "out cam " + to_string(camID) + ", press ESC to exit";
-	namedWindow(showWinName, WINDOW_AUTOSIZE);
-	while (capturing)
+	if (!SUCCEEDED(hr))
+		cout << "! SUCCESS(hr)" << endl;
+	if (SUCCEEDED(hr))
 	{
-		//imshow(showWinName, currframe);
-		char c = (char)waitKey(10);
-		if (c == 27)
-			capturing = true;
+		IFileOpenDialog* pFileOpen;
+
+		// Create the FileOpenDialog object.
+		hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+
+		if (SUCCEEDED(hr))
+		{
+			hr = pFileOpen->SetOptions(FOS_PICKFOLDERS);
+
+
+			// Show the Open dialog box.
+			hr = pFileOpen->Show(NULL);
+
+			// Get the file name from the dialog box.
+			if (SUCCEEDED(hr))
+			{
+				IShellItem* pItem;
+				hr = pFileOpen->GetResult(&pItem);
+				if (SUCCEEDED(hr))
+				{
+					PWSTR pszFilePath;
+					hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
+					// Display the file name to the user.
+					if (SUCCEEDED(hr))
+					{
+						MessageBoxW(NULL, pszFilePath, L"File Path", MB_OK);
+						CoTaskMemFree(pszFilePath);
+					}
+					pItem->Release();
+				}
+			}
+			pFileOpen->Release();
+		}
+		CoUninitialize();
 	}
 
-	t_monitorIO8.join();
-	t_showSave1.join();
-	t_showSave2.join();
+done:
+	return hr;
+}
 
-	cout << "main exit" << endl;
+int main(int argc, char* argv[])
+{
+
+	HRESULT hr = chooseSavefolder();
+	
+
+	bool test = false;
+	if (test)
+	{
+		LPCSTR IO8File = "\\\\.\\COM6";
+
+
+		bool testCams = true;
+
+		// prefix of file name for both.avi and .csv files
+		__time64_t t_begin0;
+		struct tm curr_tm;
+		char timebuff[50];
+		_time64(&t_begin0);
+		_localtime64_s(&curr_tm, &t_begin0);
+		strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
+		string filename_prefix = "v_" + string(timebuff) + "_camera";
+
+
+		thread t_showSave1(showSaveCamStream, 0, filename_prefix + to_string(0));
+		thread t_showSave2(showSaveCamStream, 1, filename_prefix + to_string(1));
+		thread t_monitorIO8(handleIO8, IO8File, "v_" + string(timebuff) + "_startpad_timestamp");
+
+		int camID = 0;
+		const string showWinName = "out cam " + to_string(camID) + ", press ESC to exit";
+		namedWindow(showWinName, WINDOW_AUTOSIZE);
+		capturing = true;
+		while (capturing)
+		{
+			imshow(showWinName, currframe);
+			char c = (char)waitKey(10);
+			if (c == 27)
+				capturing = false;
+
+			cout << "main" << endl;
+		}
+
+		t_monitorIO8.join();
+		t_showSave1.join();
+		t_showSave2.join();
+
+		cout << "main exit" << endl;
+	}
+
+	
 	return 0;
 }
