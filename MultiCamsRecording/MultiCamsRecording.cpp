@@ -20,6 +20,8 @@ using namespace std::chrono;
 #include "webCam.h"
 
 auto t_start = chrono::steady_clock::now();
+bool capturing = false;
+Mat currframe;
 
 double get_web_frame(VideoCapture cap, int camID)
 {
@@ -64,10 +66,10 @@ int showSaveCamStream(int camID, string outFilename)
 	int frame_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
 	int frame_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
 	double fps = get_web_frame(cap, camID);
-	string outVFile = outFilename + ".avi";
+	string outVFile = outFilename + "_video.avi";
 	VideoWriter outVideo(outVFile, fourcc, fps, Size(frame_width, frame_height));
 
-	string outTimestampFile = outFilename + ".csv";
+	string outTimestampFile = outFilename + "_timestamp.csv";
 	std::ofstream timeStampFile(outTimestampFile);
 	timeStampFile << "framei" << "," << "time(ms)" << "\n";
 
@@ -80,6 +82,8 @@ int showSaveCamStream(int camID, string outFilename)
 		cap >> frame;
 		long t_elapsed  = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count();
 		framei++;
+
+		frame.copyTo(currframe);
 
 		imshow(showWinName, frame);
 		outVideo.write(frame);
@@ -95,7 +99,7 @@ int showSaveCamStream(int camID, string outFilename)
 
 }
 
-bool handleIO8(LPCSTR COMFileName)
+bool handleIO8(LPCSTR COMFileName, string outFilename)
 {
 	HANDLE hComm;
 
@@ -134,18 +138,7 @@ bool handleIO8(LPCSTR COMFileName)
 		return false;
 	}
 
-	char DataBuffer[] = "A";
-	DWORD dwBytesToWrite = (DWORD)strlen(DataBuffer);
-	DWORD dwBytesWritten = 0;
-
 	bool fSuccess;
-	
-	fSuccess = WriteFile(hComm,        // Handle to the Serial port
-		DataBuffer,     // Data to be written to the port
-		dwBytesToWrite,  //No of bytes to write
-		&dwBytesWritten, //Bytes written
-		NULL);
-
 
 	fSuccess = SetCommMask(hComm, EV_CTS | EV_DSR | EV_RXCHAR);
 	if (!fSuccess)
@@ -158,12 +151,7 @@ bool handleIO8(LPCSTR COMFileName)
 	OVERLAPPED o;
 	DWORD dwEvtMask;
 	// Create an event object for use by WaitCommEvent. 
-	o.hEvent = CreateEvent(
-		NULL,   // default security attributes 
-		TRUE,   // manual-reset event 
-		FALSE,  // not signaled 
-		NULL    // no name
-	);
+	o.hEvent = CreateEvent(NULL, TRUE, FALSE,  NULL);
 	// Initialize the rest of the OVERLAPPED structure to zero.
 	o.Internal = 0;
 	o.InternalHigh = 0;
@@ -172,27 +160,32 @@ bool handleIO8(LPCSTR COMFileName)
 	assert(o.hEvent);
 	
 	int retVal;
-	if (WaitCommEvent(hComm, &dwEvtMask, &o))
+	DWORD dwBytesWritten = 0;
+	int fi = 0;
+	std::ofstream timeStampFile(outFilename + ".csv");
+	timeStampFile << "time(ms)" << "\n";
+	while (capturing)
 	{
-		if (dwEvtMask & EV_RXCHAR)
+		fSuccess = WriteFile(hComm, "A", 1, &dwBytesWritten, NULL);
+		if (WaitCommEvent(hComm, &dwEvtMask, &o))
 		{
-			cout << "Character Received" << endl;
+			if (dwEvtMask & EV_RXCHAR)
+			{
+				BYTE Byte;
+				DWORD dwBytesTransferred;
+				ReadFile(hComm, &Byte, 1, &dwBytesTransferred, 0);
+				retVal = Byte;
 
-			BYTE Byte;
-			DWORD dwBytesTransferred;
-			ReadFile(hComm, &Byte, 1, &dwBytesTransferred, 0);
-			retVal = Byte;
-
-			cout << "retVal = " << retVal << endl;
+				if (fi % 1000 == 0)
+				{
+					long t_elapsed = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count();
+					timeStampFile  << t_elapsed << "\n";
+				}
+			}
 		}
-
-		if (dwEvtMask & EV_CTS)
-		{
-			// To do. 
-		}
+		fi++;
 	}
-
-
+	
 	CloseHandle(hComm);//Closing the Serial Port
 
 	return true;
@@ -200,28 +193,39 @@ bool handleIO8(LPCSTR COMFileName)
 
 int main(int argc, char* argv[])
 {
-	LPCSTR IO8File = "\\\\.\\COM4";
-	bool status =  handleIO8(IO8File);
+	LPCSTR IO8File = "\\\\.\\COM6";
+	
 
-	bool testCams = false;
-	if (testCams)
+	bool testCams = true;
+
+	// prefix of file name for both.avi and .csv files
+	__time64_t t_begin0;
+	struct tm curr_tm;
+	char timebuff[50];
+	_time64(&t_begin0);
+	_localtime64_s(&curr_tm, &t_begin0);
+	strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
+	string filename_prefix = "v_" + string(timebuff) + "_camera";
+
+
+	thread t_showSave1(showSaveCamStream, 0, filename_prefix + to_string(0));
+	thread t_showSave2(showSaveCamStream, 1, filename_prefix + to_string(1));
+	thread t_monitorIO8(handleIO8, IO8File, "v_" + string(timebuff) + "_startpad_timestamp");
+
+	int camID = 0;
+	const string showWinName = "out cam " + to_string(camID) + ", press ESC to exit";
+	namedWindow(showWinName, WINDOW_AUTOSIZE);
+	while (capturing)
 	{
-		// prefix of file name for both.avi and .csv files
-		__time64_t t_begin0;
-		struct tm curr_tm;
-		char timebuff[50];
-		_time64(&t_begin0);
-		_localtime64_s(&curr_tm, &t_begin0);
-		strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
-		string filename_prefix = "video_" + string(timebuff) + "_camera";
-
-
-		thread t_showSave1(showSaveCamStream, 0, filename_prefix + to_string(0));
-		thread t_showSave2(showSaveCamStream, 1, filename_prefix + to_string(1));
-
-		t_showSave1.join();
-		t_showSave2.join();
+		//imshow(showWinName, currframe);
+		char c = (char)waitKey(10);
+		if (c == 27)
+			capturing = true;
 	}
+
+	t_monitorIO8.join();
+	t_showSave1.join();
+	t_showSave2.join();
 
 	cout << "main exit" << endl;
 	return 0;
