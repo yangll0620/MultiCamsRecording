@@ -13,6 +13,8 @@
 #include<windows.h>
 #include <stdio.h>
 #include <shobjidl.h> 
+#include <locale>
+#include <codecvt>
 
 using namespace cv;
 using namespace std;
@@ -190,65 +192,61 @@ bool handleIO8(LPCSTR COMFileName, string outFilename)
 	return true;
 }
 
-HRESULT chooseSavefolder()
+HRESULT chooseSavefolder(string* savefolder)
 {
-	string savefolder = "";
-	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	IFileOpenDialog* pFileOpen{};
+	IShellItem* pItem{};
+	PWSTR pszFilePath = { 0 };
+
+	HRESULT hr;
+	string str;
+
+	std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> convert;
+	
 	hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-	cout << "SUCCEEDED(S_OK) = " << SUCCEEDED(S_OK) << endl;
-	cout << "SUCCEEDED(S_FALSE)= " << SUCCEEDED(S_FALSE) << endl;
-	cout << "SUCCEEDED(E_FAIL) = " << SUCCEEDED(E_FAIL) << endl;
-	cout << "SUCCEEDED(RPC_E_CHANGED_MODE)  = " << SUCCEEDED(RPC_E_CHANGED_MODE) << endl;
-
 	if (!SUCCEEDED(hr))
-		cout << "! SUCCESS(hr)" << endl;
-	if (SUCCEEDED(hr))
-	{
-		IFileOpenDialog* pFileOpen;
-
-		// Create the FileOpenDialog object.
-		hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
-
-		if (SUCCEEDED(hr))
-		{
-			hr = pFileOpen->SetOptions(FOS_PICKFOLDERS);
+		goto done;
 
 
-			// Show the Open dialog box.
-			hr = pFileOpen->Show(NULL);
+	// Create the FileOpenDialog object.
+	hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+	if (!SUCCEEDED(hr))
+		goto done;
 
-			// Get the file name from the dialog box.
-			if (SUCCEEDED(hr))
-			{
-				IShellItem* pItem;
-				hr = pFileOpen->GetResult(&pItem);
-				if (SUCCEEDED(hr))
-				{
-					PWSTR pszFilePath;
-					hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
 
-					// Display the file name to the user.
-					if (SUCCEEDED(hr))
-					{
-						MessageBoxW(NULL, pszFilePath, L"File Path", MB_OK);
-						CoTaskMemFree(pszFilePath);
-					}
-					pItem->Release();
-				}
-			}
-			pFileOpen->Release();
-		}
-		CoUninitialize();
-	}
+	hr = pFileOpen->SetOptions(FOS_PICKFOLDERS);
+	if (!SUCCEEDED(hr))
+		goto done;
+
+	// Show the Open dialog box.
+	hr = pFileOpen->Show(NULL);
+	if (!SUCCEEDED(hr))
+		goto done;
+			
+
+	// Get the file name from the dialog box.
+	hr = pFileOpen->GetResult(&pItem);
+	if (!SUCCEEDED(hr))
+		goto done;
+		
+	
+	hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+					
+	str = convert.to_bytes(pszFilePath);
+	savefolder = &str;
 
 done:
+	pItem->Release();
+	pFileOpen->Release();
+	CoTaskMemFree(pszFilePath);
+	CoUninitialize();
 	return hr;
 }
 
 int main(int argc, char* argv[])
 {
-
-	HRESULT hr = chooseSavefolder();
+	string* savefolder{};
+	HRESULT hr = chooseSavefolder(savefolder);
 	
 
 	bool test = false;
