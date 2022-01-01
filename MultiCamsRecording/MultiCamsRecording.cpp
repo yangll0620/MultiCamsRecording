@@ -93,6 +93,8 @@ int showSaveCamStream(int camID, string outFilename)
 		timeStampFile << framei << "," << t_elapsed << "\n";
 
 		char c = (char)waitKey(10);
+		if (c == 27)
+			capturing = false;
 	}
 	cap.release();
 	cout << "camera " << camID << " released!" << endl;
@@ -104,8 +106,7 @@ bool handleIO8(LPCSTR COMFileName, string outFilename)
 {
 	HANDLE hComm;
 
-	hComm = CreateFileA(COMFileName,                //port name
-		GENERIC_READ | GENERIC_WRITE, //Read/Write
+	hComm = CreateFileA(COMFileName, GENERIC_READ | GENERIC_WRITE, //Read/Write
 		0,                            // No Sharing
 		NULL,                         // No Security
 		OPEN_EXISTING,// Open existing port only
@@ -150,7 +151,6 @@ bool handleIO8(LPCSTR COMFileName, string outFilename)
 	}
 
 	OVERLAPPED o;
-	DWORD dwEvtMask;
 	// Create an event object for use by WaitCommEvent. 
 	o.hEvent = CreateEvent(NULL, TRUE, FALSE,  NULL);
 	// Initialize the rest of the OVERLAPPED structure to zero.
@@ -160,11 +160,13 @@ bool handleIO8(LPCSTR COMFileName, string outFilename)
 	o.OffsetHigh = 0;
 	assert(o.hEvent);
 	
-	int retVal;
 	DWORD dwBytesWritten = 0;
-	int fi = 0;
+	DWORD dwEvtMask;
+	BYTE readbyte;
+	DWORD dwBytesTransferred;
+	long t_elapsed;
 	std::ofstream timeStampFile(outFilename + ".csv");
-	timeStampFile << "time(ms)" << "\n";
+	timeStampFile << "Binary" << "," << "time(ms)" << "\n";
 	while (capturing)
 	{
 		fSuccess = WriteFile(hComm, "A", 1, &dwBytesWritten, NULL);
@@ -172,22 +174,24 @@ bool handleIO8(LPCSTR COMFileName, string outFilename)
 		{
 			if (dwEvtMask & EV_RXCHAR)
 			{
-				BYTE Byte;
-				DWORD dwBytesTransferred;
-				ReadFile(hComm, &Byte, 1, &dwBytesTransferred, 0);
-				retVal = Byte;
-
-				if (fi % 1000 == 0)
+				t_elapsed = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count();
+				
+				fSuccess == ReadFile(hComm, &readbyte, 1, &dwBytesTransferred, 0);
+				while (fSuccess && readbyte != '\r')
 				{
-					long t_elapsed = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count();
-					timeStampFile  << t_elapsed << "\n";
+					if (readbyte == '0' || readbyte == '1')
+					{
+						timeStampFile << char(readbyte) << ", " << t_elapsed  << endl;
+					}
+					fSuccess == ReadFile(hComm, &readbyte, 1, &dwBytesTransferred, 0);
 				}
 			}
 		}
-		fi++;
 	}
 	
+	timeStampFile.close();
 	CloseHandle(hComm);//Closing the Serial Port
+	cout << "Closed IO8 COM!" << endl;
 
 	return true;
 }
@@ -246,10 +250,10 @@ done:
 int main(int argc, char* argv[])
 {
 	string* savefolder{};
-	HRESULT hr = chooseSavefolder(savefolder);
+	//HRESULT hr = chooseSavefolder(savefolder);
 	
 
-	bool test = false;
+	bool test = true;
 	if (test)
 	{
 		LPCSTR IO8File = "\\\\.\\COM6";
@@ -266,24 +270,12 @@ int main(int argc, char* argv[])
 		strftime(timebuff, sizeof(timebuff), "%Y%m%d_%H%M%S", &curr_tm);
 		string filename_prefix = "v_" + string(timebuff) + "_camera";
 
-
+		capturing = true;
 		thread t_showSave1(showSaveCamStream, 0, filename_prefix + to_string(0));
 		thread t_showSave2(showSaveCamStream, 1, filename_prefix + to_string(1));
 		thread t_monitorIO8(handleIO8, IO8File, "v_" + string(timebuff) + "_startpad_timestamp");
 
-		int camID = 0;
-		const string showWinName = "out cam " + to_string(camID) + ", press ESC to exit";
-		namedWindow(showWinName, WINDOW_AUTOSIZE);
-		capturing = true;
-		while (capturing)
-		{
-			imshow(showWinName, currframe);
-			char c = (char)waitKey(10);
-			if (c == 27)
-				capturing = false;
 
-			cout << "main" << endl;
-		}
 
 		t_monitorIO8.join();
 		t_showSave1.join();
