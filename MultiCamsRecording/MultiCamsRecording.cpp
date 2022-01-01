@@ -159,14 +159,42 @@ bool handleIO8(LPCSTR COMFileName, string outFilename)
 	o.Offset = 0;
 	o.OffsetHigh = 0;
 	assert(o.hEvent);
-	
+
+
+
+	BYTE readbyte[3] = { 0,0,0 };
 	DWORD dwBytesWritten = 0;
-	DWORD dwEvtMask;
-	BYTE readbyte;
 	DWORD dwBytesTransferred;
+	DWORD dwEvtMask;
+
+	// identify idlebit
+	BYTE idlebit = 0;
+	fSuccess = WriteFile(hComm, "A", 1, &dwBytesWritten, NULL);
+	if (WaitCommEvent(hComm, &dwEvtMask, &o))
+	{
+		if (dwEvtMask & EV_RXCHAR)
+		{
+			fSuccess = ReadFile(hComm, &readbyte, 3, &dwBytesTransferred, 0);
+			if (fSuccess && idlebit == 0 && (readbyte[0] == '0' || readbyte[1] == '1'))
+			{
+					idlebit = readbyte[0];
+					cout << "touchpad idle bit == " << char(idlebit) << endl;
+			}
+			else
+			{
+				cout << "can't identify touchpad idle bit, return" << endl;
+				capturing = false;
+				return false;
+			}
+		}
+	}
+	
+	// read 
 	long t_elapsed;
 	std::ofstream timeStampFile(outFilename + ".csv");
-	timeStampFile << "Binary" << "," << "time(ms)" << "\n";
+	timeStampFile << "Touch#" << "," << "time(ms)" << "\n";
+	BYTE prebit = 0;
+	int touchi = 0;
 	while (capturing)
 	{
 		fSuccess = WriteFile(hComm, "A", 1, &dwBytesWritten, NULL);
@@ -176,15 +204,16 @@ bool handleIO8(LPCSTR COMFileName, string outFilename)
 			{
 				t_elapsed = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count();
 				
-				fSuccess == ReadFile(hComm, &readbyte, 1, &dwBytesTransferred, 0);
-				while (fSuccess && readbyte != '\r')
-				{
-					if (readbyte == '0' || readbyte == '1')
+				fSuccess = ReadFile(hComm, &readbyte, 3, &dwBytesTransferred, 0);
+				if (fSuccess && (readbyte[0] == '0'||readbyte[1] == '1'))
+				{	
+					if (prebit == idlebit && readbyte[0] != idlebit)
 					{
-						timeStampFile << char(readbyte) << ", " << t_elapsed  << endl;
+						touchi++;
+						timeStampFile << char(readbyte) << ", " << t_elapsed << endl;
 					}
-					fSuccess == ReadFile(hComm, &readbyte, 1, &dwBytesTransferred, 0);
-				}
+					prebit = readbyte[0];
+				}				
 			}
 		}
 	}
