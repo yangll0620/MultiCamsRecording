@@ -168,16 +168,17 @@ bool handleIO8(LPCSTR COMFileName, string outFilename)
 	DWORD dwEvtMask;
 
 	// identify idlebit
-	BYTE idlebit = 0;
+	BYTE idlebit = 0, pressbit = 0;
 	fSuccess = WriteFile(hComm, "A", 1, &dwBytesWritten, NULL);
 	if (WaitCommEvent(hComm, &dwEvtMask, &o))
 	{
 		if (dwEvtMask & EV_RXCHAR)
 		{
 			fSuccess = ReadFile(hComm, &readbyte, 3, &dwBytesTransferred, 0);
-			if (fSuccess && idlebit == 0 && (readbyte[0] == '0' || readbyte[1] == '1'))
+			if (fSuccess && idlebit == 0 && (readbyte[0] == '0' || readbyte[0] == '1'))
 			{
 					idlebit = readbyte[0];
+					pressbit = (idlebit == '0') ? '1' : '0';
 					cout << "touchpad idle bit == " << char(idlebit) << endl;
 			}
 			else
@@ -205,12 +206,13 @@ bool handleIO8(LPCSTR COMFileName, string outFilename)
 				t_elapsed = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count();
 				
 				fSuccess = ReadFile(hComm, &readbyte, 3, &dwBytesTransferred, 0);
-				if (fSuccess && (readbyte[0] == '0'||readbyte[1] == '1'))
+				if (fSuccess && (readbyte[0] == '0'||readbyte[0] == '1'))
 				{	
-					if (prebit == idlebit && readbyte[0] != idlebit)
+					if (prebit == idlebit && readbyte[0] == pressbit)
 					{
 						touchi++;
-						timeStampFile << char(readbyte) << ", " << t_elapsed << endl;
+						timeStampFile << touchi << ", " << t_elapsed << endl;
+						cout << "touched at " << touchi << endl;
 					}
 					prebit = readbyte[0];
 				}				
@@ -285,7 +287,7 @@ int main(int argc, char* argv[])
 	bool test = true;
 	if (test)
 	{
-		LPCSTR IO8File = "\\\\.\\COM6";
+		LPCSTR IO8File = "\\\\.\\COM4";
 
 
 		bool testCams = true;
